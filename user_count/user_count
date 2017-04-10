@@ -1,0 +1,22 @@
+#!/bin/sh
+# -*- sh -*-
+#
+# Plugin to count the number of users, grouped by shell
+
+if [ "$1" = "autoconf" ]; then
+	echo yes
+	exit 0
+fi
+
+data=$(awk -F: '$3 >= 1000 && $1 != "nobody" {print $7}' /etc/passwd | sed -e 's/^$/none/' | awk -F"/" '$0 ~ dir{print $NF}' | sort)
+
+if [ "$1" = "config" ]; then
+	echo 'graph_title User count'
+	echo 'graph_args --rigid -l 0 '
+	echo 'graph_vlabel Users'
+	echo 'graph_category system'
+	echo "$data" | uniq | awk '{ print $1".label "$1"\n"$1".draw AREASTACK" }'
+	exit 0
+fi
+
+echo "$data" | uniq -c | awk '{ print $2".value "$1 }'

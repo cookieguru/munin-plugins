@@ -1,0 +1,54 @@
+#!/usr/bin/php
+<?php
+if(isset($argv[1]) && $argv[1] == 'config') {
+	echo "graph_category network\n";
+	echo "graph_args --lower-limit 0 --rigid --base 1024\n";
+	echo "graph_info SolusVM Bandwidth\n";
+	echo "graph_title SolusVM Bandwidth\n";
+	echo "graph_vlabel Bytes\n";
+	echo "total.draw AREA\n";
+	echo "total.label Total\n";
+	echo "used.draw AREASTACK\n";
+	echo "used.label Used\n";
+	exit(0);
+} elseif(isset($argv[1]) && $argv[1] == 'autoconf') {
+	echo 'no (config does not exist)';
+	exit(1);
+}
+
+$postfields = [
+	'key'    => 'ABCDE-FGHIJ-KLMNO',
+	'hash'   => '123456789abcdef0123456789abcdef012345678',
+	'action' => 'info',
+	'bw'     => 'true',
+];
+
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1); //TODO: Needed?
+curl_setopt($ch, CURLOPT_HEADER, 0);
+curl_setopt($ch, CURLOPT_HTTPHEADER, ['Expect:']);
+curl_setopt($ch, CURLOPT_POST, 1);
+curl_setopt($ch, CURLOPT_POSTFIELDS, $postfields);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_TIMEOUT_MS, 500);
+curl_setopt($ch, CURLOPT_URL, 'https://www.example.com:5656/api/client/command.php');
+$data = curl_exec($ch);
+
+$err = curl_error($ch);
+curl_close($ch);
+if(!empty($err)) {
+	echo file_get_contents('/var/cache/munin/solusvm_bw');
+	exit();
+}
+
+if(preg_match('/<bw>([\d,]+)<\/bw>/', $data, $matches)) {
+	$parts = explode(',', $matches[1]);
+	$data = "used.value {$parts[1]}\n";
+	$data .= "total.value {$parts[0]}\n";
+	file_put_contents('/var/cache/munin/solusvm_bw', $data);
+	echo $data;
+} else {
+	die(-2);
+}

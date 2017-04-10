@@ -1,0 +1,55 @@
+#!/usr/bin/php
+<?php
+define('PATH_TO_WP_LOAD', '/var/www/path/to/wp-load.php');
+
+if(isset($argv[1]) && $argv[1] == 'autoconf') {
+	if(is_readable(PATH_TO_WP_LOAD)) {
+		echo "yes\n";
+		exit(0);
+	} else {
+		echo "no\n";
+		exit(1);
+	}
+}
+
+define('SHORTINIT', true);
+require(PATH_TO_WP_LOAD);
+
+$roles = array_keys(unserialize($wpdb->get_var("SELECT option_value FROM $wpdb->options WHERE option_name = 'wp_user_roles'")));
+sort($roles);
+
+if(isset($argv[1]) && $argv[1] == 'config') {
+	echo "graph_args -l 0 --rigid\n";
+	echo "graph_title Wordpress Users\n";
+	echo "graph_vlabel Users\n";
+	echo "graph_info Wordpress user counts\n";
+	echo "graph_category wordpress\n";
+	echo 'graph_order ' . implode(' ', $roles) . "\n";
+
+	$first = true;
+	foreach($roles as $role) {
+		echo "$role.label " . ucfirst($role) . "\n";
+		echo "$role.draw " . ($first ? 'AREA' : 'STACK') . "\n";
+		$first = false;
+	}
+
+	exit(0);
+}
+
+$roles = array_flip($roles);
+$roles = array_map(function() { return 0; }, $roles);
+$rows = $wpdb->get_results("SELECT meta_value FROM $wpdb->usermeta WHERE meta_key = 'wp_capabilities'");
+foreach($rows as $row) {
+	$data = unserialize($row->meta_value);
+	foreach($data as $role => $value) {
+		if($value) {
+			if(!isset($roles[$role])) {
+				$roles[$role] = 0;
+			}
+			$roles[$role]++;
+		}
+	}
+}
+foreach($roles as $role => $count) {
+	echo "$role.value $count\n";
+}

@@ -1,0 +1,58 @@
+#!/usr/bin/php
+<?php
+define('PATH_TO_WP_LOAD', '/var/www/path/to/wp-load.php');
+
+if(isset($argv[1]) && $argv[1] == 'autoconf') {
+	if(is_readable(PATH_TO_WP_LOAD)) {
+		echo "yes\n";
+		exit(0);
+	} else {
+		echo "no\n";
+		exit(1);
+	}
+}
+
+require(PATH_TO_WP_LOAD);
+
+$counts = get_comment_count();
+unset($counts['all'], $counts['total_comments']);
+
+$others = (array) $wpdb->get_results("
+                SELECT comment_type, COUNT(*) AS total
+                FROM {$wpdb->comments}
+                WHERE comment_type != ''
+                GROUP BY comment_type
+        ", ARRAY_A);
+foreach($others as $type) {
+	$counts[$type['comment_type']] = $type['total'];
+}
+
+foreach($counts as $category => $count) {
+	$sanitized = preg_replace('/[^A-Za-z0-9_]+/', '_', $category);
+	if($category != $sanitized) {
+		$counts[$sanitized] = $count;
+		unset($counts[$category]);
+	}
+}
+
+if(isset($argv[1]) && $argv[1] == 'config') {
+	echo "graph_args -l 0 --rigid\n";
+	echo "graph_title Wordpress Comments\n";
+	echo "graph_vlabel Comments\n";
+	echo "graph_info Wordpress comment counts\n";
+	echo "graph_category wordpress\n";
+	echo 'graph_order ' . implode(' ', array_keys($counts)) . "\n";
+
+	$first = true;
+	foreach($counts as $category => $unused) {
+		echo "$category.label " . ucfirst(str_replace(['_', '-'], ' ', $category)) . "\n";
+		echo "$category.draw " . ($first ? 'AREA' : 'STACK') . "\n";
+		$first = false;
+	}
+
+	exit(0);
+}
+
+foreach($counts as $category => $count) {
+	echo "$category.value $count\n";
+}
