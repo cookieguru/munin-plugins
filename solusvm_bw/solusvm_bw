@@ -17,23 +17,22 @@ if(isset($argv[1]) && $argv[1] == 'config') {
 }
 
 $postfields = [
-	'key'    => 'ABCDE-FGHIJ-KLMNO',
-	'hash'   => '123456789abcdef0123456789abcdef012345678',
+	'key'    => 'ABCDE-FGHIJ-KLMNO', //TODO: Edit this
+	'hash'   => '123456789abcdef0123456789abcdef012345678', //TODO: Edit this
 	'action' => 'info',
 	'bw'     => 'true',
 ];
 
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1); //TODO: Needed?
-curl_setopt($ch, CURLOPT_HEADER, 0);
+curl_setopt($ch, CURLOPT_FRESH_CONNECT, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, ['Expect:']);
-curl_setopt($ch, CURLOPT_POST, 1);
+curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, $postfields);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 curl_setopt($ch, CURLOPT_TIMEOUT_MS, 500);
-curl_setopt($ch, CURLOPT_URL, 'https://www.example.com:5656/api/client/command.php');
+curl_setopt($ch, CURLOPT_URL, 'https://www.example.com:5656/api/client/command.php'); //TODO: Edit this
 $data = curl_exec($ch);
 
 $err = curl_error($ch);

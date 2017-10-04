@@ -18,7 +18,8 @@ Installation Instructions
 #Download the plugin
 sudo wget https://raw.githubusercontent.com/cookieguru/munin-plugins/master/solusvm_bw/solusvm_bw -O /usr/share/munin/plugins/solusvm_bw
 ```
-Edit `key`, `hash`, and the URL to your SolusVM API endpoint as necessary
+Edit `key`, `hash`, and the URL to your SolusVM API endpoint using your favorite
+text editor (see TODO comments) and then:
 ```bash
 #Add execution permissions
 sudo chmod +x /usr/share/munin/plugins/solusvm_bw
