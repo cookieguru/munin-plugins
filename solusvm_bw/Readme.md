@@ -25,6 +25,9 @@ text editor (see TODO comments) and then:
 sudo chmod +x /usr/share/munin/plugins/solusvm_bw
 #Install the plugin
 sudo ln -s /usr/share/munin/plugins/solusvm_bw /etc/munin/plugins/solusvm_bw
+#Create the cache file
+sudo touch /var/cache/munin/solusvm_bw
+sudo chown nobody.munin /var/cache/munin/solusvm_bw
 #Restart munin-node
 sudo /etc/init.d/munin-node restart
 #Optionally, test the output
