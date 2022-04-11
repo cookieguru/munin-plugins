@@ -1,0 +1,78 @@
+#!/usr/bin/php
+<?php
+define('IP', '192.168.1.123');
+define('MAK', '3141592653');
+define('CACHE_FILE', '/var/cache/munin/tivo');
+if(isset($argv[1]) && $argv[1] == 'autoconf') {
+	if(!function_exists('curl_init')) {
+		echo "no (PHP extension cURL not installed)\n";
+	} elseif(!function_exists('bcadd')) {
+		echo "no (PHP extension bcmath not installed)\n";
+	} elseif(!function_exists('simplexml_load_string')) {
+		echo "no (PHP extension simplexml not installed)\n";
+	} else {
+		echo "yes\n";
+	}
+	exit(0);
+}
+
+if(isset($argv[1]) && $argv[1] == 'config') {
+	echo "graph_title TiVo\n";
+	echo "graph_vlabel Bytes\n";
+	echo "graph_category other\n";
+	echo "graph_info Bytes\n";
+	echo "graph_args --base 1024 --rigid -l 0\n";
+	echo "bytes.label Bytes\n";
+	echo "bytes.draw AREA\n";
+	exit(0);
+}
+
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_DIGEST);
+curl_setopt($ch, CURLOPT_USERPWD, 'tivo:' . MAK);
+
+curl_setopt($ch, CURLOPT_URL, 'https://' . IP . '/TiVoConnect?Command=QueryContainer&Container=%2FNowPlaying&ItemCount=0');
+$text = curl_exec($ch);
+$cache = file(CACHE_FILE, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+
+if($text) {
+	$xml = simplexml_load_string($text);
+	$last_changed = (string)$xml->Details->LastChangeDate;
+} else {
+	$last_changed = $cache[0];
+}
+
+if($cache[0] === $last_changed) {
+	echo "bytes.value {$cache[1]}";
+	exit();
+}
+
+$seen_items = 0;
+$total_items = 1;
+$total_size = 0;
+
+while($seen_items < $total_items) {
+	$url = 'https://' . IP . "/TiVoConnect?Command=QueryContainer&Container=%2FNowPlaying&Recurse=Yes&AnchorOffset=$seen_items&ItemCount=50&SortOrder=CreationDate";
+	curl_setopt($ch, CURLOPT_URL, $url);
+	$text = curl_exec($ch);
+	$xml = simplexml_load_string($text);
+	$seen_items += (int)$xml->ItemCount;
+	$total_items = (int)$xml->Details->TotalItems;
+	foreach($xml->Item as $item) {
+		$icon = (string)$item->Links->CustomIcon->Url ?? null;
+		if($icon == 'urn:tivo:image:suggestion-recording' || $icon == 'urn:tivo:image:in-progress-recording') {
+			continue;
+		}
+		$item_size = (string)$item->Details->SourceSize;
+		$total_size = bcadd($total_size, $item_size);
+	}
+}
+
+if(!empty($total_size)) {
+	file_put_contents(CACHE_FILE, "$last_changed\n$total_size");
+}
+
+echo "bytes.value $total_size";
